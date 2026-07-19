@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+*.keras
+*.h5
+static/uploads/*
+dataset/
+images/

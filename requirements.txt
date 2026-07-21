@@ -1,4 +1,4 @@
-﻿Flask
+Flask
 tensorflow-cpu
 opencv-python-headless
 numpy

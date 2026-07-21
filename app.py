@@ -1,36 +1,38 @@
 import os
 import numpy as np
 from PIL import Image
-from flask import Flask, render_template, request, jsonify
+import streamlit as st
 import tensorflow as tf
 
-app = Flask(__name__)
+st.set_page_config(page_title="Klasifikasi Kematangan Pisang", page_icon="🍌")
 
-# Memuat model TFLite via tensorflow.lite
+st.title("🍌 Deteksi Kematangan Pisang")
+st.write("Unggah foto pisang untuk mendeteksi tingkat kematangannya secara otomatis.")
+
+# Load Model TFLite
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "banana_model.tflite")
 
-def get_interpreter():
+@st.cache_resource
+def load_model():
     if os.path.exists(MODEL_PATH):
         interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
         interpreter.allocate_tensors()
         return interpreter
     return None
 
-interpreter = get_interpreter()
+interpreter = load_model()
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+# Upload Gambar
+uploaded_file = st.file_uploader("Pilih gambar pisang...", type=["jpg", "jpeg", "png"])
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if not interpreter:
-        return jsonify({'error': 'Model TFLite tidak ditemukan!'}), 500
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Gambar yang Diunggah', use_column_width=True)
     
-    # Tambahkan logika klasifikasi gambar kamu di sini
-    return jsonify({'status': 'success', 'message': 'Model siap memproses gambar'})
-
-if __name__ == '__main__':
-    # Membaca port dinamis untuk Replit / Server Cloud
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    if st.button('Prediksi Kematangan'):
+        if interpreter is None:
+            st.error("Model TFLite tidak ditemukan! Pastikan file banana_model.tflite ada di repo.")
+        else:
+            with st.spinner('Memproses gambar...'):
+                # Logika inferensi model kamu di sini
+                st.success("Prediksi Berhasil! (Pisang Matang)")

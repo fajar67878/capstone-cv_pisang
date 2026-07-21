@@ -1,7 +1,7 @@
 import os
 import urllib.request
 
-# Batasi penggunaan RAM & Thread TensorFlow untuk Railway CPU
+# Konfigurasi agar TensorFlow hemat RAM & menggunakan CPU
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['OMP_NUM_THREADS'] = '1'
@@ -15,20 +15,24 @@ import numpy as np
 
 app = Flask(__name__)
 
-# Config Model & Release Link
 MODEL_PATH = "baseline_banana_model.keras"
 MODEL_URL = "https://github.com/fajar67878/capstone-cv_pisang/releases/download/v1.0/baseline_banana_model.keras"
 
-# 1. Download model otomatis jika belum ada di server
+# Proses unduh otomatis jika file model belum ada di server
 if not os.path.exists(MODEL_PATH):
-    print(f"Downloading model from {MODEL_URL} ...")
-    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-    print("Download model selesai!")
+    print(f"Downloading model from {MODEL_URL}...")
+    try:
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
+        urllib.request.install_opener(opener)
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Download model berhasil!")
+    except Exception as e:
+        print(f"Gagal mengunduh model: {e}")
 
-# 2. Load model
+# Memuat model Keras
 model = tf.keras.models.load_model(MODEL_PATH)
 
-# Sesuaikan dengan kelas/label kamu
 CLASS_NAMES = ['Kematangan_Pas', 'Mentah', 'Terlalu_Matang']
 
 def preprocess_image(image_bytes):

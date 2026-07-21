@@ -1,4 +1,4 @@
-﻿Flask
+Flask
 tflite-runtime
 opencv-python-headless
 numpy

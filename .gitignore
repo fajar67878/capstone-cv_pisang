@@ -1,6 +1,5 @@
 *.keras
 *.h5
-*.png
 dataset/
 __pycache__/
 .venv/

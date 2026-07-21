@@ -1,5 +1,5 @@
 Flask==3.0.0
-serverless-wsgi==3.0.2
-tflite-runtime
+gunicorn==21.2.0
+tensorflow-cpu==2.15.0
 numpy
 Pillow

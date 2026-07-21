@@ -1,60 +1,39 @@
 import os
-from flask import Flask, render_template, request, jsonify
-import cv2
 import numpy as np
-import tflite_runtime.interpreter as tflite
+from PIL import Image
+from flask import Flask, render_template, request, jsonify
+
+# Import TFLite dengan fallback untuk Windows (Localhost) & Netlify (Linux)
+try:
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    import tensorflow.lite as tflite
 
 app = Flask(__name__)
 
-# Load model TFLite
-MODEL_PATH = "banana_model.tflite"
-interpreter = tflite.Interpreter(model_path=MODEL_PATH)
-interpreter.allocate_tensors()
+# Muat Model TFLite
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.tflite")
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+def load_model():
+    if os.path.exists(MODEL_PATH):
+        interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+        interpreter.allocate_tensors()
+        return interpreter
+    return None
 
-CLASS_NAMES = ['Kematangan_Pas', 'Mentah', 'Terlalu_Matang']
+interpreter = load_model()
 
-def preprocess_image(image_bytes):
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    img_resized = cv2.resize(img, (224, 224))
-    img_array = np.array(img_resized, dtype=np.float32) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    return img_array
-
-@app.route('/', methods=['GET'])
-def index():
-    return render_template('index.html')
+@app.route('/')
+def home():
+    return render_template('index.html') if os.path.exists('templates/index.html') else "Aplikasi Flask Capstone Berjalan!"
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-        
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-
-    try:
-        image_bytes = file.read()
-        processed_img = preprocess_image(image_bytes)
-        
-        # Prediksi via TFLite
-        interpreter.set_tensor(input_details[0]['index'], processed_img)
-        interpreter.invoke()
-        predictions = interpreter.get_tensor(output_details[0]['index'])[0]
-        
-        predicted_class = CLASS_NAMES[np.argmax(predictions)]
-        confidence = float(np.max(predictions)) * 100
-
-        return jsonify({
-            'class': predicted_class,
-            'confidence': f"{confidence:.2f}%"
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if not interpreter:
+        return jsonify({'error': 'Model TFLite tidak ditemukan!'}), 500
+    
+    # Tambahkan logika prediksi kamu di sini
+    return jsonify({'status': 'success', 'message': 'Model siap digunakan'})
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

@@ -1,19 +1,18 @@
 import os
 from flask import Flask, render_template, request, jsonify
-import tensorflow as tf
 import cv2
 import numpy as np
-
-# Konfigurasi TensorFlow
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import tflite_runtime.interpreter as tflite
 
 app = Flask(__name__)
 
-MODEL_PATH = "baseline_banana_model.keras"
+# Load model TFLite
+MODEL_PATH = "banana_model.tflite"
+interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
 
-# Memuat model
-model = tf.keras.models.load_model(MODEL_PATH)
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 CLASS_NAMES = ['Kematangan_Pas', 'Mentah', 'Terlalu_Matang']
 
@@ -41,10 +40,14 @@ def predict():
     try:
         image_bytes = file.read()
         processed_img = preprocess_image(image_bytes)
-        predictions = model.predict(processed_img)
         
-        predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
-        confidence = float(np.max(predictions[0])) * 100
+        # Prediksi via TFLite
+        interpreter.set_tensor(input_details[0]['index'], processed_img)
+        interpreter.invoke()
+        predictions = interpreter.get_tensor(output_details[0]['index'])[0]
+        
+        predicted_class = CLASS_NAMES[np.argmax(predictions)]
+        confidence = float(np.max(predictions)) * 100
 
         return jsonify({
             'class': predicted_class,
@@ -53,6 +56,5 @@ def predict():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Vercel memerlukan WSGI handler bernama 'app'
 if __name__ == '__main__':
     app.run()

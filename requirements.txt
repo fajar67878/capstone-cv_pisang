@@ -1,4 +1,4 @@
-Flask
-tensorflow-cpu
+﻿Flask
+tflite-runtime
 opencv-python-headless
 numpy

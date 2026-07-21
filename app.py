@@ -1,54 +1,68 @@
+import os
+import urllib.request
+from flask import Flask, render_template, request, jsonify
+import tensorflow as tf
 import cv2
 import numpy as np
-import tensorflow as tf
 
-# Muat model terbaik (misal hasil transfer learning yang biasanya lebih akurat)
-try:
-    model = tf.keras.models.load_model('mobilenet_banana_model.keras')
-    print("Berhasil memuat model Transfer Learning.")
-except:
-    model = tf.keras.models.load_model('baseline_banana_model.keras')
-    print("Berhasil memuat model Baseline.")
+app = Flask(__name__)
 
-# Daftar label sesuai urutan abjad folder kelas Keras
-class_labels = ['Overripe (Terlalu Matang)', 'Ripe (Matang Sempura)', 'Rotten (Busuk)', 'Unripe (Mentah)']
+# Config Model & Release Link
+MODEL_PATH = "baseline_banana_model.keras"
+MODEL_URL = "https://github.com/fajar67878/capstone-cv_pisang/releases/download/v1.0/baseline_banana_model.keras"
 
-# Aktifkan Kamera Laptop
-cap = cv2.VideoCapture(0)
-print("Aplikasi Deteksi Kematangan Pisang Aktif... Tekan 'q' pada keyboard untuk keluar.")
+# 1. Download model otomatis jika belum ada di server Railway
+if not os.path.exists(MODEL_PATH):
+    print(f"Downloading model from {MODEL_URL} ...")
+    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    print("Download model selesai!")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+# 2. Load model TensorFlow/Keras
+model = tf.keras.models.load_model(MODEL_PATH)
 
-    # Preprocessing bingkai gambar dari kamera (150x150)
-    resized_frame = cv2.resize(frame, (150, 150))
-    img_array = np.expand_dims(resized_frame, axis=0)
+# Sesuaikan dengan nama kelas/label dataset kamu
+CLASS_NAMES = ['Kematangan_Pas', 'Mentah', 'Terlalu_Matang']
 
-    # Lakukan Prediksi
-    predictions = model.predict(img_array, verbose=0)[0]
-    best_class_index = np.argmax(predictions) # Cari nilai probabilitas tertinggi
-    confidence = predictions[best_class_index] * 100
-
-    # Tentukan text label dan warna bounding text
-    label_text = f"{class_labels[best_class_index]} ({confidence:.2f}%)"
+def preprocess_image(image_bytes):
+    # Convert bytes image ke format OpenCV/NumPy array
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
-    # Warna teks berdasarkan hasil deteksi
-    if best_class_index == 3:   # Mentah
-        color = (255, 0, 0)     # Biru
-    elif best_class_index == 1: # Matang
-        color = (0, 255, 0)     # Hijau
-    else:                       # Terlalu matang / Busuk
-        color = (0, 0, 255)     # Merah
+    # Preprocessing (Sesuaikan ukuran input model kamu, contoh 224x224 atau 150x150)
+    img_resized = cv2.resize(img, (224, 224))
+    img_array = np.array(img_resized, dtype=np.float32) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
 
-    # Tampilkan Teks Hasil Prediksi di Layar Video Kamera
-    cv2.putText(frame, f"Status: {label_text}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-    cv2.imshow('Capstone Project AI - Kematangan Pisang', frame)
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
 
-    # Berhenti jika menekan tombol 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
 
-cap.release()
-cv2.destroyAllWindows()
+    try:
+        image_bytes = file.read()
+        processed_img = preprocess_image(image_bytes)
+        predictions = model.predict(processed_img)
+        
+        predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
+        confidence = float(np.max(predictions[0])) * 100
+
+        return jsonify({
+            'class': predicted_class,
+            'confidence': f"{confidence:.2f}%"
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)

@@ -1,5 +1,13 @@
 import os
 import urllib.request
+
+# Batasi penggunaan RAM & Thread TensorFlow untuk Railway CPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['TF_NUM_INTRAOP_THREADS'] = '1'
+os.environ['TF_NUM_INTEROP_THREADS'] = '1'
+
 from flask import Flask, render_template, request, jsonify
 import tensorflow as tf
 import cv2
@@ -11,24 +19,21 @@ app = Flask(__name__)
 MODEL_PATH = "baseline_banana_model.keras"
 MODEL_URL = "https://github.com/fajar67878/capstone-cv_pisang/releases/download/v1.0/baseline_banana_model.keras"
 
-# 1. Download model otomatis jika belum ada di server Railway
+# 1. Download model otomatis jika belum ada di server
 if not os.path.exists(MODEL_PATH):
     print(f"Downloading model from {MODEL_URL} ...")
     urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
     print("Download model selesai!")
 
-# 2. Load model TensorFlow/Keras
+# 2. Load model
 model = tf.keras.models.load_model(MODEL_PATH)
 
-# Sesuaikan dengan nama kelas/label dataset kamu
+# Sesuaikan dengan kelas/label kamu
 CLASS_NAMES = ['Kematangan_Pas', 'Mentah', 'Terlalu_Matang']
 
 def preprocess_image(image_bytes):
-    # Convert bytes image ke format OpenCV/NumPy array
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    
-    # Preprocessing (Sesuaikan ukuran input model kamu, contoh 224x224 atau 150x150)
     img_resized = cv2.resize(img, (224, 224))
     img_array = np.array(img_resized, dtype=np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
@@ -63,6 +68,5 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

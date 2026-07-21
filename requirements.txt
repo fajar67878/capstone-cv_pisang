@@ -1,4 +1,4 @@
 Flask
-tflite-runtime
+tflite-runtime==2.14.0
 opencv-python-headless
 numpy

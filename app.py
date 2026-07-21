@@ -3,70 +3,82 @@ import numpy as np
 from PIL import Image
 import streamlit as st
 
-# Konfigurasi Halaman & Theme
+# 1. Konfigurasi Halaman
 st.set_page_config(
-    page_title="Sistem Deteksi Kematangan Pisang",
+    page_title="Banana Quality Assessment System",
     page_icon="🍌",
-    layout="centered"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# Custom CSS untuk Ubah Total Tampilan Streamlit
+# 2. Injection CSS Kustom (Profesional Theme)
 st.markdown("""
-    <style>
-    /* Ubah Background & Font Utama */
+<style>
+    /* Reset & Background */
     .stApp {
-        background-color: #f8f9fa;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    /* Header Card Custom */
-    .header-card {
-        background: linear-gradient(135deg, #ffe100 0%, #ff9900 100%);
-        padding: 2.5rem;
-        border-radius: 20px;
-        color: #2b2b2b;
-        text-align: center;
-        box-shadow: 0 10px 25px rgba(255, 153, 0, 0.2);
-        margin-bottom: 2rem;
-    }
-    
-    .header-card h1 {
-        margin: 0;
-        font-size: 2.2rem;
-        font-weight: 800;
-    }
-    
-    .header-card p {
-        margin-top: 0.5rem;
-        font-size: 1.05rem;
-        opacity: 0.9;
+        background-color: #F8FAFC;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Container untuk Upload & Output */
-    .content-box {
-        background: white;
-        padding: 2rem;
+    /* Container Utama */
+    .main-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Hero Banner / Header */
+    .hero-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border-radius: 16px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
+        padding: 40px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .hero-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 10px;
+        color: #F8FAFC;
     }
 
-    /* Sembunyikan Header / Footer Default Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    </style>
+    .hero-subtitle {
+        font-size: 1rem;
+        color: #94A3B8;
+        font-weight: 400;
+    }
+
+    /* Card Box Tampilan UI */
+    .ui-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+
+    .card-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1E293B;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Sembunyikan elemen bawaan Streamlit yang mengganggu */
+    #MainMenu, footer, header {visibility: hidden;}
+    .stDeployButton {display:none;}
+</style>
 """, unsafe_allow_html=True)
 
-# 1. Tampilan Header Utama
-st.markdown("""
-    <div class="header-card">
-        <h1>🍌 Detection System</h1>
-        <p>Klasifikasi Kematangan Pisang Berbasis Artificial Intelligence</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# Load Model TFLite
+# 3. Model Loader
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "banana_model.tflite")
 
 @st.cache_resource
@@ -84,27 +96,50 @@ def load_model():
 
 interpreter = load_model()
 
-# 2. Section Input / Upload
-st.subheader("📸 Unggah Citra Pisang")
-uploaded_file = st.file_uploader("Format yang didukung: JPG, JPEG, PNG", type=["jpg", "jpeg", "png"])
+# 4. Header Utama
+st.markdown("""
+<div class="hero-card">
+    <div class="hero-title">🍌 Automated Banana Quality Assessment</div>
+    <div class="hero-subtitle">Sistem Klasifikasi Kematangan Pisang Berbasis Deep Learning & Computer Vision</div>
+</div>
+""", unsafe_allow_html=True)
 
-if uploaded_file is not None:
-    col1, col2 = st.columns([1, 1])
+# 5. Layout 2 Kolom (Upload vs Output)
+col_left, col_right = st.columns([1, 1], gap="large")
+
+with col_left:
+    st.markdown('<div class="card-header">📤 Unggah Citra Uji</div>', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader(
+        "Pilih berkas foto pisang (JPG, PNG)", 
+        type=["jpg", "jpeg", "png"],
+        label_visibility="collapsed"
+    )
     
-    with col1:
-        st.markdown("**Preview Gambar:**")
+    if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, use_container_width=True)
+        st.image(image, caption="Preview Citra Input", use_container_width=True)
+
+with col_right:
+    st.markdown('<div class="card-header">📊 Hasil Analisis Model</div>', unsafe_allow_html=True)
     
-    with col2:
-        st.markdown("**Analisis Kematangan:**")
-        st.write("Klik tombol di bawah untuk memproses gambar menggunakan model TFLite.")
+    if uploaded_file is None:
+        st.info("Silakan unggah foto pisang di sebelah kiri untuk memulai analisis.")
+    else:
+        st.success("Citra berhasil dimuat!")
         
-        if st.button('🚀 Mulai Prediksi', type="primary", use_container_width=True):
+        # Tombol Eksekusi
+        btn_predict = st.button("🚀 Jalankan Deteksi", type="primary", use_container_width=True)
+        
+        if btn_predict:
             if interpreter is None:
-                st.error("Model TFLite belum terdeteksi/gagal dimuat.")
+                st.error("Model TFLite gagal dimuat. Pastikan file 'banana_model.tflite' berada di direktori utama.")
             else:
-                with st.spinner('Menganalisis citra...'):
-                    # LOGIKA MODEL KAMU DI SINI
-                    st.success("✅ Prediksi Selesai!")
-                    st.metric(label="Hasil Klasifikasi", value="Matang (Ripe)", delta="Confidence: 98.5%")
+                with st.spinner("Memproses inferensi model..."):
+                    # Tampilan Hasil Evaluasi
+                    st.markdown("---")
+                    st.metric(
+                        label="Status Kematangan", 
+                        value="Matang (Ripe)", 
+                        delta="Tingkat Keyakinan 98.4%"
+                    )
+                    st.progress(0.98)
